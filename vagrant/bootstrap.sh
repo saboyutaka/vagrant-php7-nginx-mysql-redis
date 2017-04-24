@@ -10,13 +10,16 @@ debconf-set-selections <<< "mysql-server-5.6 mysql-server/root_password_again pa
 apt-get install -y libmysqlclient-dev mysql-server-5.6 mysql-client-5.6
 cat >> /etc/mysql/my.cnf << EOS
 [client]
-default-character-set = utf8
+default-character-set = utf8mb4
+
+[mysql]
+default-character-set=utf8mb4
 
 [mysqld]
 skip-character-set-client-handshake
-character-set-server  = utf8
-collation-server      = utf8_general_ci
-init-connect          = SET NAMES utf8
+character-set-server  = utf8mb4
+collation-server      = utf8mb4_general_ci
+init-connect          = SET NAMES utf8mb4
 EOS
 service mysql restart
 

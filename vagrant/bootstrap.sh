@@ -1,37 +1,31 @@
 #!/usr/bin/env bash
-export DEBIAN_FRONTEND=noninteractive
+
+# Set timezone
+ln -sf  /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
 
 apt-get update
 apt-get install -y curl git unzip
 
-# install mysql
-debconf-set-selections <<< "mysql-server-5.6 mysql-server/root_password password "
-debconf-set-selections <<< "mysql-server-5.6 mysql-server/root_password_again password "
-apt-get install -y libmysqlclient-dev mysql-server-5.6 mysql-client-5.6
-cat >> /etc/mysql/my.cnf << EOS
-[client]
-default-character-set = utf8mb4
+# Install MySQL
+export DEBIAN_FRONTEND=noninteractive
+debconf-set-selections <<< "mysql-server-5.7 mysql-server/root_password password "
+debconf-set-selections <<< "mysql-server-5.7 mysql-server/root_password_again password "
+apt-get install -y mysql-server-5.7
+mv /home/vagrant/my.cnf /etc/my.cnf
+systemctl restart mysql
+mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';"
 
-[mysql]
-default-character-set=utf8mb4
-
-[mysqld]
-skip-character-set-client-handshake
-character-set-server  = utf8mb4
-collation-server      = utf8mb4_general_ci
-init-connect          = SET NAMES utf8mb4
-EOS
-service mysql restart
-
-# install php7.1
-add-apt-repository ppa:ondrej/php -y
+# Install php 7.1
+add-apt-repository ppa:ondrej/php
 apt-get update
-apt-get install -y php7.1 php-cli php-pear php-mbstring php7.1-intl php7.1-mysql php7.1-fpm php7.1-dev php7.1-zip
+apt-get install -y php7.1
+apt-get install -y php-pear php7.1-fpm php7.1-mysql php7.1-mbstring php7.1-mcrypt php7.1-xml php7.1-gd php7.1-zip php7.1-curl php7.1-intl php7.1-dev
 pecl install xdebug
 
-cat >> /etc/php/7.1/fpm/php.ini <<EOS
+mkdir -p /vagrant/www/tmp/profile
+
+xdebug= `cat <<EOS
 zend_extension=/usr/lib/php/20160303/xdebug.so
-; see http://xdebug.org/docs/all_settings
 html_errors=on
 xdebug.collect_vars=on
 xdebug.collect_params=4
@@ -46,24 +40,38 @@ xdebug.remote_connect_back=on
 xdebug.profiler_enable=0
 xdebug.profiler_output_dir="/vagrant/www/tmp/profile"
 xdebug.max_nesting_level=1000
-xdebug.remote_host=192.168.100.1
+xdebug.remote_host=192.168.123.1
 xdebug.remote_port = 9001
-xdebug.idekey = "mydebug"
-EOS
+xdebug.idekey = "phpstorm"
+EOS`
 
-# install composer
-curl -sS https://getcomposer.org/installer -o composer-setup.php
-php composer-setup.php --install-dir=/usr/local/bin --filename=composer
-rm composer-setup.php
+echo $xdebug >> /etc/php/7.1/fpm/php.ini
+echo $xdebug >> /etc/php/7.1/cli/php.ini
 
-# install nginx
-service apache2 stop
-rm /etc/init.d/apache2
+cd /tmp
+curl -sS https://getcomposer.org/installer | php
+mv composer.phar /usr/local/bin/composer
+chmod +x /usr/local/bin/composer
 
-apt-get install nginx -y
+# Install nginx
+systemctl disable apache2
+systemctl stop apache2
+apt-get install -y nginx
+mv /home/vagrant/nginx.conf /etc/nginx/nginx.conf
+mv /home/vagrant/app.conf /etc/nginx/sites-enabled/app.conf
 rm /etc/nginx/sites-enabled/default
-mv /home/vagrant/app.conf /etc/nginx/conf.d/
-service nginx restart
+systemctl restart nginx
+systemctl enable nginx
 
-# install redis
- apt-get install -y redis-server
+# Install Redis
+apt-get -y install redis-server
+
+# Install nodejs, npm, yarn
+apt-get install -y nodejs npm
+npm cache clean
+npm install n -g
+n 8.9
+apt-get purge -y nodejs npm
+ln -sf /usr/local/bin/node /usr/bin/node
+ln -sf /usr/local/bin/npm /usr/bin/npm
+npm install -g yarn

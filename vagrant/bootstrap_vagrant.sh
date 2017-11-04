@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
-# Install laravel
-composer global require "laravel/installer"
-echo 'export PATH="$HOME/.config/composer/vendor/bin:$PATH"' >> ~/.bashrc
+cd /vagrant/www
+if [ ! -f .env ]; then
+    cp .env.example .env
+fi
 
-mkdir -p /vagrant/www/tmp/profile
+composer global require hirak/prestissimo
+composer install
+
+# mysql -uroot -e 'CREATE DATABASE IF NOT EXISTS app_development;'
+# php artisan migrate
+# php artisan db:seed
+# yarn install
+# yarn run dev
